@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-high-availability
+  namespace: default
+  labels:
+    app: nginx-ha
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-ha
+  template:
+    metadata:
+      labels:
+        app: nginx-ha
+    spec:
+      containers:
+      - name: nginx-server
+        image: nginx:stable-alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: html-volume
+          mountPath: /usr/share/nginx/html/index.html
+          subPath: index.html
+        - name: log-volume
+          mountPath: /var/log/nginx
+        - name: cache-volume
+          mountPath: /var/cache/nginx
+        - name: run-volume
+          mountPath: /var/run
+        securityContext:
+          runAsUser: 101
+          fsGroup: 101
+          seLinuxOptions:
+            type: "container_t"
+      volumes:
+      - name: config-volume
+        configMap:
+          name: nginx-conf
+      - name: html-volume
+        configMap:
+          name: nginx-conf
+      - name: log-volume
+        persistentVolumeClaim:
+          claimName: nginx-log-pvc
+      - name: cache-volume
+        emptyDir: {}
+      - name: run-volume
+        emptyDir: {}

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-high-availability
+  namespace: default
+  labels:
+    app: nginx-ha
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-ha
+  template:
+    metadata:
+      labels:
+        app: nginx-ha
+    spec:
+      # 安全上下文：Pod 级别（包含 fsGroup）
+      securityContext:
+        runAsUser: 101        # 以 nginx 用户运行所有容器
+        fsGroup: 101          # 共享存储的组 ID
+        seLinuxOptions:
+          type: "container_t"
+      containers:
+      - name: nginx-server
+        image: nginx:stable-alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: html-volume
+          mountPath: /usr/share/nginx/html/index.html
+          subPath: index.html
+        - name: log-volume
+          mountPath: /var/log/nginx
+        - name: cache-volume
+          mountPath: /var/cache/nginx
+        - name: run-volume
+          mountPath: /var/run
+      volumes:
+      - name: config-volume
+        configMap:
+          name: nginx-conf
+      - name: html-volume
+        configMap:
+          name: nginx-conf
+      - name: log-volume
+        persistentVolumeClaim:
+          claimName: nginx-log-pvc
+      - name: cache-volume
+        emptyDir: {}
+      - name: run-volume
+        emptyDir: {}
